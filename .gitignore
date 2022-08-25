@@ -2,3 +2,4 @@
 images
 old
 .DS_Store
+*.pyc

@@ -40,8 +40,8 @@ class Knee_Joints:
         self.time = 0
         self.n_steps = number_steps
 
-    def add_point_relative(self, 
-                           xshift=0, 
+    def add_point_relative(self,
+                           xshift=0,
                            yshift=-1,
                            xborder=[-1, 1],
                            yborder=[0, 0]):
@@ -63,8 +63,6 @@ class Knee_Joints:
         self.points.append(joint)
 
     def move_joint(self, name=None,
-                   xshift=None,
-                   yshift=None,
                    method='sinoidal',
                    noise_size=0,
                    bandwidth=0.1,
@@ -80,113 +78,115 @@ class Knee_Joints:
             name = [self.points[i] for i in name]
             # now we ignore xshift and yshift
 
-        if ((xshift is None or yshift is None)
-             or (len(xshift) != len(name) or len(yshift) != len(name))):
-            #
-            # xshift = [
-            #           + (joint.xborder[1]-joint.xborder[0]) 
-            #           * np.sin(2* np./pi * self.time / self.n_steps)
-            #           for joint in name]
-            # yshift = [joint.origin[1]
-            #           + np.random.uniform(joint.yborder[0], joint.yborder[1])
+        #
+        # xshift = [
+        #           + (joint.xborder[1]-joint.xborder[0])
+        #           * np.sin(2* np./pi * self.time / self.n_steps)
+        #           for joint in name]
+        # yshift = [joint.origin[1]
+        #           + np.random.uniform(joint.yborder[0], joint.yborder[1])
+        #           for joint in name]
+
+        # always have the sinoidal wave
+        xshift = [(joint.xborder[1]-joint.xborder[0])/2
+                  * np.sin(2 * np.pi * self.time / self.n_steps)
+                  + (joint.xborder[1]+joint.xborder[0])/2
+                  for joint in name]
+
+        yshift = [(joint.yborder[1]-joint.yborder[0])/2
+                  * np.sin(2 * np.pi * self.time / self.n_steps)
+                  + (joint.yborder[1]+joint.yborder[0])/2 + joint.y
+                  for joint in name]
+
+        if method == 'sinoidal':
+            # xshift = [(joint.xborder[1]-joint.xborder[0])/2
+            #           * np.sin(2 * np.pi * self.time / self.n_steps)
+            #           + (joint.xborder[1]+joint.xborder[0])/2
             #           for joint in name]
 
-            # always have the sinoidal wave
+            # yshift = [(joint.yborder[1]-joint.yborder[0])/2
+            #           * np.sin(2 * np.pi * self.time / self.n_steps)
+            #           + (joint.yborder[1]+joint.yborder[0])/2 + joint.y
+            #           for joint in name]
+            pass
+
+        elif method == 'sinoidal_noise':
+            # make a lot of noise on all points
+            # xshift = [min(max((joint.xborder[1]-joint.xborder[0])/2
+            #           * np.sin(2 * np.pi * self.time / self.n_steps)
+            #           + (joint.xborder[1]+joint.xborder[0])/2
+            #           + np.random.uniform(low=-noise_size,
+            #                               high=noise_size),
+            #           joint.xborder[0]), joint.xborder[1])
+            #           for joint in name]
+
+            # yshift = [(joint.yborder[1]-joint.yborder[0])/2
+            #           * np.sin(2 * np.pi * self.time / self.n_steps)
+            #           + (joint.yborder[1]+joint.yborder[0])/2 + joint.y
+            #           for joint in name]
+
+            xshift = [min(max(xshift[i]
+                      + np.random.uniform(low=-noise_size,
+                                          high=noise_size),
+                      name[i].xborder[0]), name[i].xborder[1])
+                      for i in range(len(name))]
+
+        elif method == 'last_point':
+            t_step = self.time / self.n_steps
+            bandwidth = np.array([-bandwidth, bandwidth])
+
+            # check if t_step is either in the interval
+            # [0.25-0.02, 0.25+0.02] or
+            if t_step > 0.25 + bandwidth[0] and t_step < 0.25 + bandwidth[1]:
+                stop = 0.25 + bandwidth[0]
+            elif t_step > 0.75 + bandwidth[0] and t_step < 0.75 + bandwidth[1]:
+                stop = 0.75 + bandwidth[0]
+            else:
+                stop = t_step
+
+            xshift[-1] = ((name[-1].xborder[1]-name[-1].xborder[0])/2
+                          * np.sin(2 * np.pi * stop)
+                          + (name[-1].xborder[1]+name[-1].xborder[0])/2
+                          + name[-1].x)
+            xshift[-1] = min(max(xshift[-1]
+                                 + np.random.uniform(low=-noise_size,
+                                                     high=noise_size),
+                             name[-1].xborder[0]),
+                             name[-1].xborder[1])
+
+        elif method == 'skip_overextension':
+            t_step = self.time / self.n_steps
+            bandwidth = np.array([-bandwidth, bandwidth])
+
+            # check if t_step is either in the interval
+            # [0.25-0.02, 0.25+0.02] or
+            if t_step > 0.25 + bandwidth[0] and t_step < 0.25 + bandwidth[1]:
+                self.time += np.ceil(self.n_steps
+                                     * (0.25 + bandwidth[1])
+                                     - self.time)
+            elif t_step > 0.75 + bandwidth[0] and t_step < 0.75 + bandwidth[1]:
+                self.time += np.ceil(self.n_steps
+                                     * (0.75 + bandwidth[1])
+                                     - self.time)
+
             xshift = [(joint.xborder[1]-joint.xborder[0])/2
                       * np.sin(2 * np.pi * self.time / self.n_steps)
                       + (joint.xborder[1]+joint.xborder[0])/2
                       for joint in name]
+            xshift[-1] = min(max(xshift[-1]
+                                 + np.random.uniform(low=-noise_size,
+                                                     high=noise_size),
+                                 name[-1].xborder[0]),
+                             name[-1].xborder[1])
 
             yshift = [(joint.yborder[1]-joint.yborder[0])/2
                       * np.sin(2 * np.pi * self.time / self.n_steps)
                       + (joint.yborder[1]+joint.yborder[0])/2 + joint.y
                       for joint in name]
 
-            if method == 'sinoidal':
-                # xshift = [(joint.xborder[1]-joint.xborder[0])/2
-                #           * np.sin(2 * np.pi * self.time / self.n_steps)
-                #           + (joint.xborder[1]+joint.xborder[0])/2
-                #           for joint in name]
-
-                # yshift = [(joint.yborder[1]-joint.yborder[0])/2
-                #           * np.sin(2 * np.pi * self.time / self.n_steps)
-                #           + (joint.yborder[1]+joint.yborder[0])/2 + joint.y
-                #           for joint in name]
-                pass
-
-            elif method == 'sinoidal_noise':
-                # make a lot of noise on all points
-                # xshift = [min(max((joint.xborder[1]-joint.xborder[0])/2
-                #           * np.sin(2 * np.pi * self.time / self.n_steps)
-                #           + (joint.xborder[1]+joint.xborder[0])/2
-                #           + np.random.uniform(low=-noise_size,
-                #                               high=noise_size),
-                #           joint.xborder[0]), joint.xborder[1])
-                #           for joint in name]
-
-                # yshift = [(joint.yborder[1]-joint.yborder[0])/2
-                #           * np.sin(2 * np.pi * self.time / self.n_steps)
-                #           + (joint.yborder[1]+joint.yborder[0])/2 + joint.y
-                #           for joint in name]
-
-                xshift = [min(max(xshift[i]
-                          + np.random.uniform(low=-noise_size,
-                                              high=noise_size),
-                          name[i].xborder[0]), name[i].xborder[1])
-                          for i in range(len(name))]
-
-            elif method == 'last_point':
-                t_step = self.time / self.n_steps
-                bandwitdh = np.array([-bandwidth, bandwidth])
-
-                # check if t_step is either in the interval
-                # [0.25-0.02, 0.25+0.02] or
-                if t_step > 0.25 + bandwitdh[0] and t_step < 0.25 + bandwitdh[1]:
-                    stop = 0.25 + bandwitdh[0]
-                elif t_step > 0.75 + bandwitdh[0] and t_step < 0.75 + bandwitdh[1]:
-                    stop = 0.75 + bandwitdh[0]
-                else:
-                    stop = t_step
-
-                xshift[-1] = ((name[-1].xborder[1]-name[-1].xborder[0])/2
-                              * np.sin(2 * np.pi * stop)
-                              + (name[-1].xborder[1]+name[-1].xborder[0])/2
-                              + name[-1].x)
-                xshift[-1] = min(max(xshift[-1]
-                                     + np.random.uniform(low=-noise_size,
-                                                         high=noise_size),
-                                     name[-1].xborder[0]),
-                                 name[-1].xborder[1])
-
-            elif method == 'skip_overextension':
-                t_step = self.time / self.n_steps
-                bandwitdh = np.array([-bandwidth, bandwidth])
-
-                # check if t_step is either in the interval
-                # [0.25-0.02, 0.25+0.02] or
-                if t_step > 0.25 + bandwitdh[0] and t_step < 0.25 + bandwitdh[1]:
-                    self.time += np.ceil(self.n_steps
-                                         * (0.25 + bandwitdh[1])
-                                         - self.time)
-                elif t_step > 0.75 + bandwitdh[0] and t_step < 0.75 + bandwitdh[1]:
-                    self.time += np.ceil(self.n_steps
-                                         * (0.75 + bandwitdh[1])
-                                         - self.time)
-
-                xshift = [(joint.xborder[1]-joint.xborder[0])/2
-                          * np.sin(2 * np.pi * self.time / self.n_steps)
-                          + (joint.xborder[1]+joint.xborder[0])/2
-                          for joint in name]
-                xshift[-1] = min(max(xshift[-1]
-                                     + np.random.uniform(low=-noise_size,
-                                                         high=noise_size),
-                                     name[-1].xborder[0]),
-                                 name[-1].xborder[1])
-
-                yshift = [(joint.yborder[1]-joint.yborder[0])/2
-                          * np.sin(2 * np.pi * self.time / self.n_steps)
-                          + (joint.yborder[1]+joint.yborder[0])/2 + joint.y
-                          for joint in name]
+        else:
+            # TODO add better message
+            raise ValueError('Method should be one of ...')
 
         for i, joint in enumerate(name):
             joint.change_xy(xshift[i], yshift[i])
