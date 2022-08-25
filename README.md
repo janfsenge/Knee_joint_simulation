@@ -1,3 +1,6 @@
 # Knee_joint_simulation
 Simulation to show the dynamics for knee joints.
 
+This notebook shows a demonstration of a use of topological methods in analysis of sequences of images to show semi-periodic behaviors (note that the same methodology generalizes to images of arbitrary dimensions as well as RGB images without any modification). The motivation for this study is a clinica knee-joint image of orthopedic patients.
+In the first stage, we generate a sequence of moving images being a surrogate for a real image of a joint motion. Some of them admit perfect periodicity, for some of them, an amount of noise is added (addition of the noise aims to stimulate orthopedic problems). Note that the position of the joint in the image as well as its size is not the same, which shows the robustness of presented analysis.
+In the examination pipeline, we produce a distance matrix between the images and apply persistent homology (in dimension 0 and 1) to the obtained distance matrix. The demonstration clearly indicates that persistence norms in the case of ideally periodic motions are much lower than in case of perturbed one, hence the presented technique can be used to detect deviation from periodic motions and deviation from symmetric motions (hence providing a score with a potential metical meaning). We hope they can be applied in clinical practice in orthopedic.

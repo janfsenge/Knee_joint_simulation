@@ -259,10 +259,14 @@ def get_ax_list(ax, rows, cols, n_subfigs):
     return (ax_list)
 
 
-def create_fig(n_subfigs, row_factor=4, col_factor=4):
-    rows, cols = get_rows_cols(len(n_subfigs))
-    fig, ax = plt.subplots(rows, cols, dpi=200,
+def create_fig(n_subfigs, row_factor=4, col_factor=4, **kwargs):
+    if isinstance(n_subfigs, int):
+        n = n_subfigs
+    else:
+        n = len(n_subfigs)
+    rows, cols = get_rows_cols(n)
+    fig, ax = plt.subplots(rows, cols,
                            figsize=(col_factor*cols,
-                                    row_factor*rows))
+                                    row_factor*rows), **kwargs)
     ax_list = get_ax_list(ax, rows, cols, rows*cols)
     return(fig, ax_list)
