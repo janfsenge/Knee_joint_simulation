@@ -39,6 +39,7 @@ class Knee_Joints:
         self.history = []
         self.time = 0
         self.n_steps = number_steps
+        self.edge_distance = np.zeros([1, 1])
 
     def add_point_relative(self,
                            xshift=0,
@@ -60,13 +61,22 @@ class Knee_Joints:
                        y,
                        xborder,
                        yborder)
+
+        pt_dist = np.array([np.linalg.norm(np.array(joint.origin)
+                                           - np.array(joint_list.origin))
+                            for joint_list in self.points])
+        self.edge_distance = np.vstack([np.hstack([self.edge_distance,
+                                                   pt_dist.reshape(-1, 1)]),
+                                        np.hstack([pt_dist, [0]])
+                                        .reshape(1, -1)])
         self.points.append(joint)
 
     def move_joint(self, name=None,
                    method='sinoidal',
                    noise_size=0,
                    bandwidth=0.1,
-                   time_updater=1):
+                   time_updater=1,
+                   adjust_y=False):
         # self.history.append({joint.name:
         #                      [joint.origin, (joint.x, joint.y)]
         #                      for joint in self.points})
@@ -188,6 +198,9 @@ class Knee_Joints:
             # TODO add better message
             raise ValueError('Method should be one of ...')
 
+        # now change the y levels (starting from the joints at point 0)
+        # such that the edge distance is always the same.
+
         for i, joint in enumerate(name):
             joint.change_xy(xshift[i], yshift[i])
 
@@ -198,9 +211,9 @@ class Knee_Joints:
         # self.history.append({joint.name:
         #                      [joint.origin, (joint.x, joint.y)]
         #                      for joint in self.points})
-        if self.time == len(self.history) or self.time == len(self.history)-1:
-            self.history.append({joint.name: (joint.x, joint.y)
-                                for joint in self.points})
+        # if self.time == len(self.history) or self.time == len(self.history)-1:
+        self.history.append({joint.name: (joint.x, joint.y)
+                            for joint in self.points})
 
     def get_history_array(self):
         points = []
@@ -259,7 +272,10 @@ def get_ax_list(ax, rows, cols, n_subfigs):
     return (ax_list)
 
 
-def create_fig(n_subfigs, row_factor=4, col_factor=4, **kwargs):
+def create_fig(n_subfigs,
+               row_factor=4, col_factor=4,
+               return_row_col=False,
+               **kwargs):
     if isinstance(n_subfigs, int):
         n = n_subfigs
     else:
@@ -269,4 +285,43 @@ def create_fig(n_subfigs, row_factor=4, col_factor=4, **kwargs):
                            figsize=(col_factor*cols,
                                     row_factor*rows), **kwargs)
     ax_list = get_ax_list(ax, rows, cols, rows*cols)
-    return(fig, ax_list)
+    if return_row_col:
+        return(fig, ax_list, rows, cols)
+    else:
+        return(fig, ax_list)
+
+# %%
+#
+
+
+def diagram_convert(diagram):
+    if isinstance(diagram, list) and isinstance(diagram[0], tuple):
+        diagram = np.array([[dgm[1][0], dgm[1][1], dgm[0]] for dgm in diagram])
+    elif isinstance(diagram, np.ndarray) and diagram.ndim == 2:
+        if diagram.shape[1] == 3:
+            diagram = [[int(dgm[2]), (dgm[0], dgm[1])] for dgm in diagram]
+        else:
+            raise ValueError("There is no dimension information!")
+    else:
+        raise ValueError("Wrong format of the persistence diagram")
+
+    return diagram
+
+
+def get_distance_matrix(points):
+    pw_dist = np.zeros([np.shape(points)[0], np.shape(points)[0]])
+    for i in range(np.shape(points)[0]):
+        for j in range(i+1, np.shape(points)[0]):
+            pw_dist[i,j] = np.linalg.norm(points[i] - points[j])
+    pw_dist += pw_dist.transpose()
+    return(pw_dist)
+
+
+def get_max_pw_dist(points):
+    max_dist = 0
+    for i in range(np.shape(points)[0]):
+        for j in range(i+1, np.shape(points)[0]):
+            tmp = np.linalg.norm(points[i] - points[j])
+            if tmp > max_dist:
+                max_dist = tmp
+    return(max_dist)

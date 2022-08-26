@@ -1,5 +1,6 @@
 
-images
+data1000
 old
-.DS_Store
+*.DS_Store
 *.pyc
+
