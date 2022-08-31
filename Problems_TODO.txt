@@ -1,0 +1,5 @@
+Problems by 2022_08_30:
+
+1) last_point in data_1000 doesn't show any differences when we add to the noise parameter
+
+2) better imagemagick calls; right now there are too many differences for easy calling.

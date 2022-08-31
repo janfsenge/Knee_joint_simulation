@@ -3,3 +3,5 @@ data_1000
 old
 *.DS_Store
 *.pyc
+.DS_Store
+Knee_joint_simulation.zip
